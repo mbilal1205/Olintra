@@ -1,0 +1,103 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL") // Supabase connection pooling ke liye zaroori[reference:6]
+}
+
+// ===== Olintra Core Tables =====
+
+model Tool {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  category    String?
+  status      String   @default("draft")
+  seoTitle    String?
+  metaDesc    String?
+  schemaJson  Json?
+  config      Json?
+  locale      String   @default("en")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  inputs      ToolInput[]
+  datasets    ToolDataset[]
+  contents    ToolContent[]
+  rules       CalculationRule[]
+  events      ToolEvent[]
+
+  @@map("tools")
+}
+
+model ToolInput {
+  id           String  @id @default(cuid())
+  toolId       String
+  fieldKey     String
+  label        String
+  fieldType    String
+  validation   Json?
+  options      Json?
+  displayOrder Int     @default(0)
+
+  tool Tool @relation(fields: [toolId], references: [id], onDelete: Cascade)
+
+  @@unique([toolId, fieldKey])
+  @@map("tool_inputs")
+}
+
+model ToolDataset {
+  id            String   @id @default(cuid())
+  toolId        String
+  datasetKey    String
+  region        String?
+  payload       Json
+  effectiveDate DateTime?
+
+  tool Tool @relation(fields: [toolId], references: [id], onDelete: Cascade)
+
+  @@index([toolId, datasetKey, region])
+  @@map("tool_datasets")
+}
+
+model CalculationRule {
+  id         String  @id @default(cuid())
+  toolId     String
+  ruleKey    String
+  expression String
+  conditions Json?
+  priority   Int     @default(0)
+
+  tool Tool @relation(fields: [toolId], references: [id], onDelete: Cascade)
+
+  @@map("calculation_rules")
+}
+
+model ToolContent {
+  id        String  @id @default(cuid())
+  toolId    String
+  blockType String
+  locale    String  @default("en")
+  content   Json
+  orderIdx  Int     @default(0)
+
+  tool Tool @relation(fields: [toolId], references: [id], onDelete: Cascade)
+
+  @@map("tool_content")
+}
+
+model ToolEvent {
+  id        BigInt   @id @default(autoincrement())
+  toolId    String
+  eventType String
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  tool Tool @relation(fields: [toolId], references: [id], onDelete: Cascade)
+
+  @@index([toolId, eventType])
+  @@map("tool_events")
+}
